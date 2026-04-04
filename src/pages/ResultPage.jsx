@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import {
-  PiggyBank, Clock, Leaf, TrendingUp, Download,
+  Coins, Clock, Leaf, TrendingUp, Download,
   ExternalLink, Share2, RefreshCw, Zap, Sun,
   CheckCircle, X, Copy, FlaskConical,
 } from 'lucide-react'
@@ -346,7 +346,7 @@ export default function ResultPage() {
             <Reveal><SectionHeading sub="Calculated using TNB tariff rates and real Malaysian GHI data">Key Metrics</SectionHeading></Reveal>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
-                icon={PiggyBank} label="Monthly Savings"
+                icon={Coins} label="Monthly Savings"
                 value={`RM ${r.monthly_savings_rm.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 sub="Avg. based on TNB tariff" accent delay={0} />
               <MetricCard
