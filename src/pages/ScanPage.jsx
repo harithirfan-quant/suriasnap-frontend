@@ -106,8 +106,8 @@ export default function ScanPage() {
   const [fields, setFields] = useState({
     consumption_kwh:  '',
     bill_amount_rm:   '',
-    account_number:   '',
     tariff_category:  '',
+    state:            '',   // detected state — passed to AssessPage to skip Step 1
   })
   const [confidence, setConfidence] = useState(null)
 
@@ -125,10 +125,10 @@ export default function ScanPage() {
     try {
       const data = await scanBill(file)
       setFields({
-        consumption_kwh: data.consumption_kwh  != null ? String(data.consumption_kwh) : '',
-        bill_amount_rm:  data.bill_amount_rm   != null ? String(data.bill_amount_rm)  : '',
-        account_number:  data.account_number   ?? '',
-        tariff_category: data.tariff_category  ?? '',
+        consumption_kwh: data.consumption_kwh != null ? String(data.consumption_kwh) : '',
+        bill_amount_rm:  data.bill_amount_rm  != null ? String(data.bill_amount_rm)  : '',
+        tariff_category: data.tariff_category ?? '',
+        state:           data.state           ?? '',
       })
       setConfidence(data.confidence_score ?? null)
       setPhase('review')
@@ -150,7 +150,7 @@ export default function ScanPage() {
     setPhase('idle')
     setPreview(null)
     setOcrError(null)
-    setFields({ consumption_kwh: '', bill_amount_rm: '', account_number: '', tariff_category: '' })
+    setFields({ consumption_kwh: '', bill_amount_rm: '', tariff_category: '', state: '' })
     setConfidence(null)
     // reset file inputs
     if (cameraRef.current)  cameraRef.current.value  = ''
@@ -164,8 +164,8 @@ export default function ScanPage() {
       state: {
         consumption:     fields.consumption_kwh ? +fields.consumption_kwh : null,
         bill_amount_rm:  fields.bill_amount_rm  ? +fields.bill_amount_rm  : null,
-        account_number:  fields.account_number  || null,
         tariff_category: fields.tariff_category || null,
+        detectedState:   fields.state           || null,
         fromScan: true,
       },
     })
@@ -351,20 +351,19 @@ export default function ScanPage() {
                         unit="RM"
                         placeholder="e.g. 165.52"
                       />
-                      <div className="grid grid-cols-2 gap-3">
-                        <EditableField
-                          label="Account Number"
-                          value={fields.account_number}
-                          onChange={v => setFields(f => ({ ...f, account_number: v }))}
-                          placeholder="xxxx-xxxx-xxxx"
-                        />
-                        <EditableField
-                          label="Tariff Category"
-                          value={fields.tariff_category}
-                          onChange={v => setFields(f => ({ ...f, tariff_category: v }))}
-                          placeholder="e.g. Domestic"
-                        />
-                      </div>
+                      <EditableField
+                        label="Tariff Category"
+                        value={fields.tariff_category}
+                        onChange={v => setFields(f => ({ ...f, tariff_category: v }))}
+                        placeholder="e.g. Domestic"
+                      />
+                      {fields.state && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium"
+                             style={{ background: '#D1FAE5', color: '#065F46' }}>
+                          📍 State detected: <strong>{fields.state}</strong>
+                          <span className="ml-auto opacity-60">— Step 1 will be skipped</span>
+                        </div>
+                      )}
                     </div>
 
                     {/* primary CTA */}
@@ -440,11 +439,16 @@ export default function ScanPage() {
           )}
         </AnimatePresence>
 
-        {/* bottom note */}
+        {/* privacy notice */}
         {phase === 'idle' && (
-          <p className="mt-6 text-xs text-center text-gray-300">
-            Images are sent to our local server for OCR processing and are never stored.
-          </p>
+          <div className="mt-6 flex items-start gap-2.5 px-4 py-3 rounded-xl"
+               style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+            <span className="text-base mt-0.5">🔒</span>
+            <p className="text-xs leading-relaxed" style={{ color: '#166534' }}>
+              <strong>Your data is private.</strong> Your bill image is processed on our server for text extraction only —
+              it is <strong>never saved, stored, or shared</strong> anywhere. All data is discarded immediately after analysis.
+            </p>
+          </div>
         )}
       </div>
     </PageTransition>

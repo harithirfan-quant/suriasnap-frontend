@@ -404,12 +404,14 @@ export default function AssessPage() {
   const location   = useLocation()
   const scanState  = location.state ?? {}
 
-  const [step,        setStep]        = useState(1)
+  const detectedState = scanState.detectedState ?? null
+
+  const [step,        setStep]        = useState(detectedState ? 2 : 1)
   const [dir,         setDir]         = useState(1)   // 1 = forward, -1 = backward
   const [loading,     setLoading]     = useState(false)
   const [apiError,    setApiError]    = useState(null)
 
-  const [state,       setState]       = useState('')
+  const [state,       setState]       = useState(detectedState ?? '')
   const [consumption, setConsumption] = useState(scanState.consumption ?? 400)
   const [roofArea,    setRoofArea]    = useState(null)
   const [orientation, setOrientation] = useState('South')
@@ -435,6 +437,8 @@ export default function AssessPage() {
 
   function back() {
     if (step === 1) { navigate(-1); return }
+    // If state was auto-detected and we're on step 2, go back to scan page
+    if (step === 2 && detectedState) { navigate(-1); return }
     setDir(-1)
     setStep(s => s - 1)
   }
@@ -469,14 +473,22 @@ export default function AssessPage() {
     <PageTransition>
       <div className="max-w-lg mx-auto px-4 sm:px-6 py-10">
 
-        {/* from-scan notice */}
+        {/* from-scan notices */}
         {scanState.fromScan && step === 2 && (
           <motion.div
             initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
-            className="mb-4 px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2"
-            style={{ background: '#E0F7F7', color: TEAL }}
+            className="mb-3 space-y-2"
           >
-            ✓ Consumption pre-filled from your scanned bill — adjust if needed.
+            {detectedState && (
+              <div className="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2"
+                   style={{ background: '#D1FAE5', color: '#065F46' }}>
+                📍 State auto-detected: <strong>{detectedState}</strong> — Step 1 skipped
+              </div>
+            )}
+            <div className="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2"
+                 style={{ background: '#E0F7F7', color: TEAL }}>
+              ✓ Consumption pre-filled from your scanned bill — adjust if needed.
+            </div>
           </motion.div>
         )}
 
