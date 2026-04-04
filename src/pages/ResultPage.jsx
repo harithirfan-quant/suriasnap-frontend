@@ -186,6 +186,9 @@ export default function ResultPage() {
   const annualSavings = Math.round(r.monthly_savings_rm * 12)
   const co2Tonnes     = (r.annual_co2_offset_kg / 1000).toFixed(2)
   const trees         = Math.floor(r.annual_co2_offset_kg / 22)
+  const drivingKm     = Math.round(r.annual_co2_offset_kg / 0.21)          // avg car 0.21 kg CO₂/km
+  const flights       = Math.round(r.annual_co2_offset_kg / 100)            // KL–Penang ~100 kg CO₂/pax
+  const phoneCharges  = Math.round(r.annual_co2_offset_kg / 0.00822)        // avg phone charge ~8.22 g CO₂
   const exportKwh     = Math.max(0, r.monthly_generation_kwh - inputs.monthly_consumption_kwh)
   const exportCredits = +(exportKwh * 0.2703).toFixed(2)
   const selfSavings   = +(r.monthly_savings_rm - exportCredits).toFixed(2)
@@ -446,57 +449,76 @@ export default function ResultPage() {
             <Reveal><SectionHeading sub="Your contribution to a greener Malaysia">Environmental Impact</SectionHeading></Reveal>
             <Reveal delay={0.05}>
               <div className="rounded-2xl overflow-hidden"
-                   style={{ background: `linear-gradient(135deg, #052e16, #064e3b)` }}>
+                   style={{ background: 'linear-gradient(135deg, #052e16, #064e3b)' }}>
                 <div className="p-7 sm:p-10">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-2"
-                         style={{ color: '#86efac' }}>Annual CO₂ Offset</p>
-                      <p className="text-5xl font-black text-white">{co2Tonnes}</p>
-                      <p className="text-base font-medium mt-1" style={{ color: '#86efac' }}>tonnes / year</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-2"
-                         style={{ color: '#86efac' }}>Tree Equivalent</p>
-                      <p className="text-5xl font-black text-white">{trees.toLocaleString()}</p>
-                      <p className="text-base font-medium mt-1" style={{ color: '#86efac' }}>trees planted / year</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider mb-2"
-                         style={{ color: '#86efac' }}>Over 25 Years</p>
-                      <p className="text-5xl font-black text-white">
-                        {(parseFloat(co2Tonnes) * 25).toFixed(0)}
-                      </p>
-                      <p className="text-base font-medium mt-1" style={{ color: '#86efac' }}>tonnes saved total</p>
-                    </div>
+
+                  {/* Hero CO₂ stat */}
+                  <div className="text-center mb-8">
+                    <p className="text-xs font-semibold uppercase tracking-widest mb-3"
+                       style={{ color: '#86efac' }}>Annual CO₂ Offset</p>
+                    <p className="text-7xl sm:text-8xl font-black text-white leading-none">{co2Tonnes}</p>
+                    <p className="text-xl font-semibold mt-2" style={{ color: '#86efac' }}>tonnes of CO₂ per year</p>
+                    <p className="text-sm mt-1" style={{ color: '#4ade80', opacity: 0.7 }}>
+                      {(parseFloat(co2Tonnes) * 25).toFixed(0)} tonnes over 25 years
+                    </p>
                   </div>
 
-                  {/* tree progress bar visualisation */}
+                  {/* "That's equivalent to…" cards */}
+                  <p className="text-xs font-semibold uppercase tracking-widest text-center mb-4"
+                     style={{ color: '#86efac' }}>That's equivalent to…</p>
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    {[
+                      { emoji: '🌲', value: trees.toLocaleString(),                           label: 'trees planted',          sub: 'every year' },
+                      { emoji: '🚗', value: drivingKm.toLocaleString(),                       label: 'km of driving avoided',  sub: 'per year' },
+                      { emoji: '✈️', value: flights.toLocaleString(),                          label: 'KL–Penang flights',      sub: 'offset per year' },
+                      { emoji: '📱', value: phoneCharges >= 1_000_000
+                                              ? `${(phoneCharges / 1_000_000).toFixed(1)}M`
+                                              : phoneCharges.toLocaleString(),                 label: 'phone charges',          sub: 'powered by clean energy' },
+                    ].map(({ emoji, value, label, sub }, i) => (
+                      <motion.div
+                        key={label}
+                        initial={{ opacity: 0, y: 16 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.08, duration: 0.35 }}
+                        className="rounded-2xl p-4 sm:p-5 flex flex-col items-center text-center"
+                        style={{ background: 'rgba(255,255,255,0.08)' }}
+                      >
+                        <span className="text-4xl mb-2">{emoji}</span>
+                        <p className="text-2xl sm:text-3xl font-black text-white leading-none">{value}</p>
+                        <p className="text-xs font-semibold mt-1.5" style={{ color: '#86efac' }}>{label}</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#4ade80', opacity: 0.6 }}>{sub}</p>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Tree grid — compact */}
                   <div className="bg-black/20 rounded-2xl p-5">
                     <p className="text-xs text-green-300 mb-3 font-medium">
-                      Your annual tree equivalent ({trees.toLocaleString()} trees)
+                      🌲 {trees.toLocaleString()} trees planted equivalent
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {Array.from({ length: Math.min(trees, 120) }).map((_, i) => (
+                      {Array.from({ length: Math.min(trees, 60) }).map((_, i) => (
                         <motion.span
                           key={i}
                           initial={{ opacity: 0, scale: 0 }}
                           whileInView={{ opacity: 1, scale: 1 }}
                           viewport={{ once: true }}
-                          transition={{ delay: i * 0.008, duration: 0.2 }}
-                          style={{ fontSize: '16px' }}
+                          transition={{ delay: i * 0.012, duration: 0.2 }}
+                          style={{ fontSize: '15px' }}
                         >🌲</motion.span>
                       ))}
-                      {trees > 120 && (
-                        <span className="text-green-300 text-sm font-medium self-center ml-1">
-                          + {(trees - 120).toLocaleString()} more
+                      {trees > 60 && (
+                        <span className="text-green-300 text-sm font-semibold self-center ml-2">
+                          +{(trees - 60).toLocaleString()} more
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-green-400/70 mt-3">
-                      Based on 22 kg CO₂ absorbed per tree per year · Grid emission factor: 0.585 kgCO₂/kWh (Suruhanjaya Tenaga)
+                    <p className="text-xs text-green-400/60 mt-3">
+                      Tree: 22 kg CO₂/yr · Car: 0.21 kg CO₂/km · Flight: ~100 kg CO₂/pax (KL–Penang) · Grid: 0.585 kgCO₂/kWh (Suruhanjaya Tenaga)
                     </p>
                   </div>
+
                 </div>
               </div>
             </Reveal>
