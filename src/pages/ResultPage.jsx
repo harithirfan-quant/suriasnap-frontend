@@ -545,7 +545,7 @@ export default function ResultPage() {
                   </p>
                 </div>
                 <a
-                  href="https://seda.gov.my/program/net-energy-metering-nem/registered-pv-system-provider-rpvsp/"
+                  href="https://www.seda.gov.my/directory/registered-pv-service-provider-directory/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-auto flex items-center justify-center gap-2 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
