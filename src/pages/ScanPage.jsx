@@ -75,10 +75,13 @@ function ScanningOverlay() {
           <ScanLine size={32} color="#E0F7F7" strokeWidth={1.5} />
         </div>
       </div>
-      <div className="text-center">
+      <div className="text-center px-4">
         <p className="text-white font-semibold text-base">Scanning your TNB bill…</p>
         <p className="text-sm mt-1" style={{ color: '#14BDBD' }}>
           Reading account details &amp; usage
+        </p>
+        <p className="text-xs mt-2 opacity-70 text-white">
+          This may take up to 30 seconds
         </p>
       </div>
     </motion.div>
@@ -131,7 +134,7 @@ export default function ScanPage() {
       setPhase('review')
     } catch (e) {
       const msg = e?.userMessage
-        ?? 'Could not read your bill. Please try a clearer photo or enter details manually.'
+        ?? 'Could not read your bill. Please try a clearer, well-lit photo — or enter your details manually.'
       setOcrError(msg)
       setPhase('error')
     }

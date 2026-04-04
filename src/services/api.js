@@ -78,7 +78,15 @@ export async function scanBill(imageFile) {
   form.append('file', imageFile)
   const { data } = await api.post('/api/scan-bill', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 90_000, // OCR on Render free tier can take up to 60s after cold start
   })
+  // Treat OCR failure (success: false) as a thrown error so the caller
+  // can route to the error phase with a helpful message.
+  if (!data.success) {
+    const err = new Error(data.message)
+    err.userMessage = data.message
+    throw err
+  }
   return data
 }
 
