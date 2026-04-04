@@ -404,9 +404,16 @@ export default function AssessPage() {
   const location   = useLocation()
   const scanState  = location.state ?? {}
 
-  const detectedState = scanState.detectedState ?? null
+  const detectedState      = scanState.detectedState ?? null
+  const scannedConsumption = (scanState.fromScan && scanState.consumption != null)
+                               ? scanState.consumption : null
 
-  const [step,        setStep]        = useState(detectedState ? 2 : 1)
+  // Determine the first step the user actually needs to fill in
+  const startStep = (detectedState && scannedConsumption) ? 3
+                  : detectedState                         ? 2
+                  : 1
+
+  const [step,        setStep]        = useState(startStep)
   const [dir,         setDir]         = useState(1)   // 1 = forward, -1 = backward
   const [loading,     setLoading]     = useState(false)
   const [apiError,    setApiError]    = useState(null)
@@ -431,13 +438,19 @@ export default function AssessPage() {
     if (!canAdvance()) return
     setDir(1)
     setApiError(null)
+    // If consumption was already scanned, jump from step 1 straight to step 3
+    if (step === 1 && scannedConsumption) { setStep(3); return }
     if (step < 3) { setStep(s => s + 1); return }
     submit()
   }
 
   function back() {
     if (step === 1) { navigate(-1); return }
-    // If state was auto-detected and we're on step 2, go back to scan page
+    // Both skipped → back to scan page
+    if (step === 3 && detectedState && scannedConsumption) { navigate(-1); return }
+    // Only consumption skipped → jump back over step 2 to step 1
+    if (step === 3 && scannedConsumption && !detectedState) { setDir(-1); setStep(1); return }
+    // Only state skipped → back to scan page
     if (step === 2 && detectedState) { navigate(-1); return }
     setDir(-1)
     setStep(s => s - 1)
@@ -474,7 +487,7 @@ export default function AssessPage() {
       <div className="max-w-lg mx-auto px-4 sm:px-6 py-10">
 
         {/* from-scan notices */}
-        {scanState.fromScan && step === 2 && (
+        {scanState.fromScan && (detectedState || scannedConsumption) && (
           <motion.div
             initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
             className="mb-3 space-y-2"
@@ -485,10 +498,12 @@ export default function AssessPage() {
                 📍 State auto-detected: <strong>{detectedState}</strong> — Step 1 skipped
               </div>
             )}
-            <div className="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2"
-                 style={{ background: '#E0F7F7', color: TEAL }}>
-              ✓ Consumption pre-filled from your scanned bill — adjust if needed.
-            </div>
+            {scannedConsumption && step === 3 && (
+              <div className="px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2"
+                   style={{ background: '#E0F7F7', color: TEAL }}>
+                ⚡ Usage pre-filled: <strong>{scannedConsumption} kWh</strong> — Step 2 skipped
+              </div>
+            )}
           </motion.div>
         )}
 
