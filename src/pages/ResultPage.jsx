@@ -440,11 +440,13 @@ export default function ResultPage() {
             <Reveal><SectionHeading sub={t('billComparisonSub')}>{t('billComparison')}</SectionHeading></Reveal>
             <Reveal delay={0.05}>
               <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6 sm:p-8">
-                {/* bar chart */}
-                <div className="flex items-end gap-6 sm:gap-10 justify-center mb-6">
-                  {/* Current bill bar */}
-                  <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
-                    <p className="text-lg font-bold tabular-nums" style={{ color: '#EF4444' }}>
+
+                {/* Bar chart — 3 columns: current bill | TNB bill after solar | NEM export income */}
+                <div className="flex items-end gap-3 sm:gap-6 justify-center mb-6">
+
+                  {/* Col 1: Current TNB bill */}
+                  <div className="flex flex-col items-center gap-2 flex-1 max-w-[140px]">
+                    <p className="text-base font-bold tabular-nums text-center" style={{ color: '#EF4444' }}>
                       RM {currentBill.toFixed(2)}
                     </p>
                     <motion.div
@@ -455,43 +457,111 @@ export default function ResultPage() {
                       viewport={{ once: true }}
                       transition={{ duration: 0.7, ease: 'easeOut' }}
                     />
-                    <p className="text-xs font-semibold text-gray-500">{t('currentBill')}</p>
+                    <p className="text-xs font-semibold text-gray-500 text-center">{t('currentBill')}</p>
                   </div>
 
-                  {/* Arrow + savings badge */}
-                  <div className="flex flex-col items-center gap-1 pb-8">
-                    <div className="px-3 py-1.5 rounded-full text-xs font-bold text-white"
-                         style={{ background: TEAL }}>
-                      -{billSavingPct}%
-                    </div>
-                    <div className="text-2xl text-gray-300">→</div>
-                  </div>
+                  {/* Arrow */}
+                  <div className="pb-8 text-xl text-gray-300 shrink-0">→</div>
 
-                  {/* With solar bar */}
-                  <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
-                    <p className="text-lg font-bold tabular-nums" style={{ color: TEAL }}>
+                  {/* Col 2: TNB bill after solar (direct offset only) */}
+                  <div className="flex flex-col items-center gap-2 flex-1 max-w-[140px]">
+                    <p className="text-base font-bold tabular-nums text-center" style={{ color: TEAL }}>
                       RM {solarBill.toFixed(2)}
                     </p>
-                    <motion.div
-                      className="w-full rounded-t-xl"
-                      style={{ background: `linear-gradient(180deg,${TEAL_L},${TEAL})`, minHeight: 8 }}
-                      initial={{ height: 0 }}
-                      whileInView={{ height: Math.max(8, 160 * (solarBill / currentBill)) }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
-                    />
-                    <p className="text-xs font-semibold text-gray-500">{t('withSolar')}</p>
+                    <div className="w-full relative" style={{ height: 160 }}>
+                      {solarBill === 0 ? (
+                        /* fully offset — show a "zero" line with tick */
+                        <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center gap-1">
+                          <span className="text-2xl">✅</span>
+                          <div className="w-full h-2 rounded-full" style={{ background: TEAL }} />
+                        </div>
+                      ) : (
+                        <motion.div
+                          className="absolute bottom-0 left-0 right-0 rounded-t-xl"
+                          style={{ background: `linear-gradient(180deg,${TEAL_L},${TEAL})` }}
+                          initial={{ height: 0 }}
+                          whileInView={{ height: Math.max(8, 160 * (solarBill / currentBill)) }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
+                        />
+                      )}
+                    </div>
+                    <p className="text-xs font-semibold text-gray-500 text-center">{t('withSolar')}</p>
                   </div>
+
+                  {/* Plus sign */}
+                  {exportCredits > 0 && (
+                    <div className="pb-8 text-xl font-bold shrink-0" style={{ color: '#16A34A' }}>+</div>
+                  )}
+
+                  {/* Col 3: NEM export income (only when generating excess) */}
+                  {exportCredits > 0 && (
+                    <div className="flex flex-col items-center gap-2 flex-1 max-w-[140px]">
+                      <p className="text-base font-bold tabular-nums text-center" style={{ color: '#16A34A' }}>
+                        RM {exportCredits.toFixed(2)}
+                      </p>
+                      <motion.div
+                        className="w-full rounded-t-xl"
+                        style={{ background: 'linear-gradient(180deg,#86EFAC,#16A34A)', minHeight: 8 }}
+                        initial={{ height: 0 }}
+                        whileInView={{ height: Math.max(8, 160 * (exportCredits / currentBill)) }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.7, ease: 'easeOut', delay: 0.3 }}
+                      />
+                      <p className="text-xs font-semibold text-center" style={{ color: '#16A34A' }}>
+                        {lang === 'en' ? 'NEM Export Income' : 'Pendapatan Eksport NEM'}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {/* summary line */}
-                <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl"
-                     style={{ background: SURF }}>
-                  <Coins size={16} style={{ color: TEAL }} />
-                  <p className="text-sm font-semibold" style={{ color: TEAL }}>
-                    {t('saving')} <span className="text-base font-black">RM {r.monthly_savings_rm.toFixed(2)}</span>
-                    {lang === 'en' ? ' every month' : ' setiap bulan'}
-                  </p>
+                {/* Legend */}
+                <div className="flex flex-wrap justify-center gap-4 mb-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#EF4444' }} />
+                    {lang === 'en' ? 'Current TNB bill' : 'Bil TNB semasa'}
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-sm inline-block" style={{ background: TEAL }} />
+                    {lang === 'en' ? 'Bill after solar offset' : 'Bil selepas offset solar'}
+                  </span>
+                  {exportCredits > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#16A34A' }} />
+                      {lang === 'en' ? 'NEM export credit (income)' : 'Kredit eksport NEM (pendapatan)'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Summary breakdown */}
+                <div className="rounded-xl overflow-hidden border border-gray-100">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                    <span className="text-sm text-gray-600">
+                      {lang === 'en' ? '🔴 TNB bill eliminated' : '🔴 Bil TNB dihapuskan'}
+                    </span>
+                    <span className="text-sm font-bold" style={{ color: TEAL }}>
+                      RM {Math.min(currentBill, r.monthly_savings_rm).toFixed(2)}
+                    </span>
+                  </div>
+                  {exportCredits > 0 && (
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
+                      <span className="text-sm text-gray-600">
+                        {lang === 'en' ? '🟢 NEM export income' : '🟢 Pendapatan eksport NEM'}
+                      </span>
+                      <span className="text-sm font-bold" style={{ color: '#16A34A' }}>
+                        + RM {exportCredits.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between px-4 py-3"
+                       style={{ background: SURF }}>
+                    <span className="text-sm font-bold" style={{ color: TEAL }}>
+                      {t('saving')}
+                    </span>
+                    <span className="text-base font-black" style={{ color: TEAL }}>
+                      RM {r.monthly_savings_rm.toFixed(2)} / {lang === 'en' ? 'month' : 'bulan'}
+                    </span>
+                  </div>
                 </div>
               </div>
             </Reveal>
