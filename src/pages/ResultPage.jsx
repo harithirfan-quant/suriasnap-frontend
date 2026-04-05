@@ -4,7 +4,7 @@ import { motion, useInView, AnimatePresence } from 'framer-motion'
 import {
   Coins, Clock, Leaf, TrendingUp, Download,
   ExternalLink, Share2, RefreshCw, Zap, Sun,
-  CheckCircle, X, Copy, FlaskConical,
+  CheckCircle, X, Copy, FlaskConical, ChevronDown, Languages,
 } from 'lucide-react'
 import { downloadReport } from '../services/api'
 import ShareCardComponent from '../components/ShareCard'
@@ -14,6 +14,55 @@ const TEAL   = '#0D7377'
 const TEAL_L = '#14BDBD'
 const DARK   = '#16213E'
 const SURF   = '#E0F7F7'
+
+// ─── translations ─────────────────────────────────────────────────────────────
+const T = {
+  en: {
+    keyMetrics: 'Key Metrics', keyMetricsSub: 'Calculated using TNB tariff rates and real Malaysian GHI data',
+    monthlySavings: 'Monthly Savings', payback: 'Payback Period', co2Offset: 'CO₂ Offset', roi: '25-Year ROI',
+    billComparison: 'Bill Comparison', billComparisonSub: 'Your estimated monthly bill — before and after solar',
+    currentBill: 'Current Bill', withSolar: 'With Solar', saving: 'You save',
+    recSystem: 'Recommended System', recSystemSub: 'Sized for your roof area and consumption',
+    finBreakdown: 'Financial Breakdown', finBreakdownSub: 'How your monthly savings are composed',
+    environmental: 'Environmental Impact', environmentalSub: 'Your contribution to a greener Malaysia',
+    co2Hero: 'Annual CO₂ Offset', co2Total: 'tonnes of CO₂ per year',
+    equivLabel: "That's equivalent to…",
+    treesLabel: 'trees planted', treesLabelSub: 'every year',
+    drivingLabel: 'km of driving avoided', drivingLabelSub: 'per year',
+    flightsLabel: 'KL–Penang flights', flightsLabelSub: 'offset per year',
+    chargesLabel: 'phone charges', chargesLabelSub: 'powered by clean energy',
+    methodology: 'About the Data', methodologySub: 'How we calculate your solar assessment',
+    readyTitle: 'Ready to go solar?',
+    disclaimer: 'Estimates are based on Global Solar Atlas GHI data, TNB residential tariff (2025/2026), SEDA Solar ATAP export rate, and standard panel efficiency of 21%. Actual results may vary. Always obtain quotes from multiple SEDA-registered installers.',
+  },
+  bm: {
+    keyMetrics: 'Metrik Utama', keyMetricsSub: 'Dikira menggunakan kadar tarif TNB dan data GHI Malaysia sebenar',
+    monthlySavings: 'Penjimatan Bulanan', payback: 'Tempoh Pulang Modal', co2Offset: 'Offset CO₂', roi: 'ROI 25 Tahun',
+    billComparison: 'Perbandingan Bil', billComparisonSub: 'Anggaran bil bulanan anda — sebelum dan selepas solar',
+    currentBill: 'Bil Semasa', withSolar: 'Dengan Solar', saving: 'Anda jimat',
+    recSystem: 'Sistem Dicadangkan', recSystemSub: 'Disesuaikan dengan saiz bumbung dan penggunaan anda',
+    finBreakdown: 'Pecahan Kewangan', finBreakdownSub: 'Bagaimana penjimatan bulanan anda dikomposkan',
+    environmental: 'Impak Alam Sekitar', environmentalSub: 'Sumbangan anda untuk Malaysia yang lebih hijau',
+    co2Hero: 'Offset CO₂ Tahunan', co2Total: 'tan CO₂ setahun',
+    equivLabel: 'Bersamaan dengan…',
+    treesLabel: 'pokok ditanam', treesLabelSub: 'setiap tahun',
+    drivingLabel: 'km memandu dielakkan', drivingLabelSub: 'setahun',
+    flightsLabel: 'penerbangan KL–Pulau Pinang', flightsLabelSub: 'diimbangi setahun',
+    chargesLabel: 'cas telefon', chargesLabelSub: 'dikuasakan tenaga bersih',
+    methodology: 'Tentang Data', methodologySub: 'Bagaimana kami mengira penilaian solar anda',
+    readyTitle: 'Bersedia untuk solar?',
+    disclaimer: 'Anggaran berdasarkan data GHI Global Solar Atlas, tarif kediaman TNB (2025/2026), kadar eksport SEDA Solar ATAP, dan kecekapan panel piawai 21%. Keputusan sebenar mungkin berbeza. Sentiasa dapatkan sebut harga daripada pemasang berdaftar SEDA.',
+  },
+}
+
+// ─── rough TNB bill estimator (for comparison chart) ─────────────────────────
+function estimateTNBBill(kwh) {
+  const energy   = kwh <= 600 ? kwh * 0.2703 : 600 * 0.2703 + (kwh - 600) * 0.3703
+  const capacity = kwh * 0.0455
+  const network  = kwh * 0.1285
+  const retail   = kwh >= 600 ? 10 : 0
+  return +(energy + capacity + network + retail).toFixed(2)
+}
 
 // ─── animated counter hook ────────────────────────────────────────────────────
 function useCounter(target, duration = 1800, start = false) {
@@ -173,8 +222,12 @@ export default function ResultPage() {
   const heroRef    = useRef(null)
   const heroInView = useInView(heroRef, { once: true })
 
-  const [toast,      setToast]      = useState(null)
-  const [pdfLoading, setPdfLoading] = useState(false)
+  const [toast,           setToast]           = useState(null)
+  const [pdfLoading,      setPdfLoading]      = useState(false)
+  const [lang,            setLang]            = useState('en')
+  const [methodologyOpen, setMethodologyOpen] = useState(false)
+
+  const t = key => T[lang][key]
 
   const showToast = useCallback(msg => setToast(msg), [])
 
@@ -193,6 +246,9 @@ export default function ResultPage() {
   const exportCredits = +(exportKwh * 0.2703).toFixed(2)
   const selfSavings   = +(r.monthly_savings_rm - exportCredits).toFixed(2)
   const roiK          = (r.roi_25_year_rm / 1000).toFixed(0)
+  const currentBill   = estimateTNBBill(inputs.monthly_consumption_kwh)
+  const solarBill     = Math.max(0, +(currentBill - r.monthly_savings_rm).toFixed(2))
+  const billSavingPct = Math.round(((currentBill - solarBill) / currentBill) * 100)
 
   // ── animated counter (starts when hero is in view) ──────────────────────────
   const animatedSavings = useCounter(annualSavings, 2000, heroInView)
@@ -328,6 +384,18 @@ export default function ResultPage() {
               <RefreshCw size={13} /> Recalculate
             </button>
             <div className="flex gap-2">
+              {/* language toggle */}
+              <button
+                onClick={() => setLang(l => l === 'en' ? 'bm' : 'en')}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-semibold transition-all"
+                style={{
+                  borderColor: lang === 'bm' ? TEAL : '#E5E7EB',
+                  background:  lang === 'bm' ? SURF  : '#fff',
+                  color:       lang === 'bm' ? TEAL  : '#6B7280',
+                }}
+              >
+                <Languages size={13} /> {lang === 'en' ? 'BM' : 'EN'}
+              </button>
               <button onClick={copyLink}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-all">
                 <Copy size={13} /> Copy link
@@ -346,30 +414,92 @@ export default function ResultPage() {
 
           {/* ── § 2  METRIC CARDS ─────────────────────────────────────────── */}
           <section>
-            <Reveal><SectionHeading sub="Calculated using TNB tariff rates and real Malaysian GHI data">Key Metrics</SectionHeading></Reveal>
+            <Reveal><SectionHeading sub={t('keyMetricsSub')}>{t('keyMetrics')}</SectionHeading></Reveal>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <MetricCard
-                icon={Coins} label="Monthly Savings"
+                icon={Coins} label={t('monthlySavings')}
                 value={`RM ${r.monthly_savings_rm.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                 sub="Avg. based on TNB tariff" accent delay={0} />
               <MetricCard
-                icon={Clock} label="Payback Period"
-                value={r.payback_years} unit="years"
+                icon={Clock} label={t('payback')}
+                value={r.payback_years} unit={lang === 'en' ? 'years' : 'tahun'}
                 sub="Simple payback" delay={0.08} />
               <MetricCard
-                icon={Leaf} label="CO₂ Offset"
+                icon={Leaf} label={t('co2Offset')}
                 value={co2Tonnes} unit="t/yr"
-                sub={`${trees.toLocaleString()} trees equivalent`} delay={0.16} />
+                sub={`${trees.toLocaleString()} ${lang === 'en' ? 'trees equivalent' : 'setara pokok'}`} delay={0.16} />
               <MetricCard
-                icon={TrendingUp} label="25-Year ROI"
+                icon={TrendingUp} label={t('roi')}
                 value={`RM ${roiK}k`}
-                sub="Net after system cost" delay={0.24} />
+                sub={lang === 'en' ? 'Net after system cost' : 'Bersih selepas kos sistem'} delay={0.24} />
             </div>
           </section>
 
-          {/* ── § 3  SYSTEM DETAILS ───────────────────────────────────────── */}
+          {/* ── § 3  BILL COMPARISON ──────────────────────────────────────── */}
           <section>
-            <Reveal><SectionHeading sub="Sized for your roof area and consumption">Recommended System</SectionHeading></Reveal>
+            <Reveal><SectionHeading sub={t('billComparisonSub')}>{t('billComparison')}</SectionHeading></Reveal>
+            <Reveal delay={0.05}>
+              <div className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6 sm:p-8">
+                {/* bar chart */}
+                <div className="flex items-end gap-6 sm:gap-10 justify-center mb-6">
+                  {/* Current bill bar */}
+                  <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
+                    <p className="text-lg font-bold tabular-nums" style={{ color: '#EF4444' }}>
+                      RM {currentBill.toFixed(2)}
+                    </p>
+                    <motion.div
+                      className="w-full rounded-t-xl"
+                      style={{ background: 'linear-gradient(180deg,#FCA5A5,#EF4444)', minHeight: 8 }}
+                      initial={{ height: 0 }}
+                      whileInView={{ height: 160 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.7, ease: 'easeOut' }}
+                    />
+                    <p className="text-xs font-semibold text-gray-500">{t('currentBill')}</p>
+                  </div>
+
+                  {/* Arrow + savings badge */}
+                  <div className="flex flex-col items-center gap-1 pb-8">
+                    <div className="px-3 py-1.5 rounded-full text-xs font-bold text-white"
+                         style={{ background: TEAL }}>
+                      -{billSavingPct}%
+                    </div>
+                    <div className="text-2xl text-gray-300">→</div>
+                  </div>
+
+                  {/* With solar bar */}
+                  <div className="flex flex-col items-center gap-2 flex-1 max-w-[160px]">
+                    <p className="text-lg font-bold tabular-nums" style={{ color: TEAL }}>
+                      RM {solarBill.toFixed(2)}
+                    </p>
+                    <motion.div
+                      className="w-full rounded-t-xl"
+                      style={{ background: `linear-gradient(180deg,${TEAL_L},${TEAL})`, minHeight: 8 }}
+                      initial={{ height: 0 }}
+                      whileInView={{ height: Math.max(8, 160 * (solarBill / currentBill)) }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.7, ease: 'easeOut', delay: 0.15 }}
+                    />
+                    <p className="text-xs font-semibold text-gray-500">{t('withSolar')}</p>
+                  </div>
+                </div>
+
+                {/* summary line */}
+                <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl"
+                     style={{ background: SURF }}>
+                  <Coins size={16} style={{ color: TEAL }} />
+                  <p className="text-sm font-semibold" style={{ color: TEAL }}>
+                    {t('saving')} <span className="text-base font-black">RM {r.monthly_savings_rm.toFixed(2)}</span>
+                    {lang === 'en' ? ' every month' : ' setiap bulan'}
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          </section>
+
+          {/* ── § 4  SYSTEM DETAILS ───────────────────────────────────────── */}
+          <section>
+            <Reveal><SectionHeading sub={t('recSystemSub')}>{t('recSystem')}</SectionHeading></Reveal>
             <Reveal delay={0.1}>
               <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
                 {/* header strip */}
@@ -409,9 +539,9 @@ export default function ResultPage() {
             </Reveal>
           </section>
 
-          {/* ── § 4  FINANCIAL BREAKDOWN ──────────────────────────────────── */}
+          {/* ── § 5  FINANCIAL BREAKDOWN ──────────────────────────────────── */}
           <section>
-            <Reveal><SectionHeading sub="How your monthly savings are composed">Financial Breakdown</SectionHeading></Reveal>
+            <Reveal><SectionHeading sub={t('finBreakdownSub')}>{t('finBreakdown')}</SectionHeading></Reveal>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
               <Reveal delay={0.05} className="rounded-2xl border border-gray-100 bg-white shadow-sm p-6">
@@ -444,9 +574,9 @@ export default function ResultPage() {
             </div>
           </section>
 
-          {/* ── § 5  ENVIRONMENTAL IMPACT ─────────────────────────────────── */}
+          {/* ── § 6  ENVIRONMENTAL IMPACT ─────────────────────────────────── */}
           <section>
-            <Reveal><SectionHeading sub="Your contribution to a greener Malaysia">Environmental Impact</SectionHeading></Reveal>
+            <Reveal><SectionHeading sub={t('environmentalSub')}>{t('environmental')}</SectionHeading></Reveal>
             <Reveal delay={0.05}>
               <div className="rounded-2xl overflow-hidden"
                    style={{ background: 'linear-gradient(135deg, #052e16, #064e3b)' }}>
@@ -455,25 +585,25 @@ export default function ResultPage() {
                   {/* Hero CO₂ stat */}
                   <div className="text-center mb-8">
                     <p className="text-xs font-semibold uppercase tracking-widest mb-3"
-                       style={{ color: '#86efac' }}>Annual CO₂ Offset</p>
+                       style={{ color: '#86efac' }}>{t('co2Hero')}</p>
                     <p className="text-7xl sm:text-8xl font-black text-white leading-none">{co2Tonnes}</p>
-                    <p className="text-xl font-semibold mt-2" style={{ color: '#86efac' }}>tonnes of CO₂ per year</p>
+                    <p className="text-xl font-semibold mt-2" style={{ color: '#86efac' }}>{t('co2Total')}</p>
                     <p className="text-sm mt-1" style={{ color: '#4ade80', opacity: 0.7 }}>
-                      {(parseFloat(co2Tonnes) * 25).toFixed(0)} tonnes over 25 years
+                      {(parseFloat(co2Tonnes) * 25).toFixed(0)} {lang === 'en' ? 'tonnes over 25 years' : 'tan dalam 25 tahun'}
                     </p>
                   </div>
 
                   {/* "That's equivalent to…" cards */}
                   <p className="text-xs font-semibold uppercase tracking-widest text-center mb-4"
-                     style={{ color: '#86efac' }}>That's equivalent to…</p>
+                     style={{ color: '#86efac' }}>{t('equivLabel')}</p>
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     {[
-                      { emoji: '🌲', value: trees.toLocaleString(),                           label: 'trees planted',          sub: 'every year' },
-                      { emoji: '🚗', value: drivingKm.toLocaleString(),                       label: 'km of driving avoided',  sub: 'per year' },
-                      { emoji: '✈️', value: flights.toLocaleString(),                          label: 'KL–Penang flights',      sub: 'offset per year' },
+                      { emoji: '🌲', value: trees.toLocaleString(),                           label: t('treesLabel'),   sub: t('treesLabelSub') },
+                      { emoji: '🚗', value: drivingKm.toLocaleString(),                       label: t('drivingLabel'), sub: t('drivingLabelSub') },
+                      { emoji: '✈️', value: flights.toLocaleString(),                          label: t('flightsLabel'), sub: t('flightsLabelSub') },
                       { emoji: '📱', value: phoneCharges >= 1_000_000
                                               ? `${(phoneCharges / 1_000_000).toFixed(1)}M`
-                                              : phoneCharges.toLocaleString(),                 label: 'phone charges',          sub: 'powered by clean energy' },
+                                              : phoneCharges.toLocaleString(),                 label: t('chargesLabel'), sub: t('chargesLabelSub') },
                     ].map(({ emoji, value, label, sub }, i) => (
                       <motion.div
                         key={label}
@@ -524,9 +654,97 @@ export default function ResultPage() {
             </Reveal>
           </section>
 
-          {/* ── § 6  CALL TO ACTION ───────────────────────────────────────── */}
+          {/* ── § 7  METHODOLOGY ─────────────────────────────────────────── */}
           <section>
-            <Reveal><SectionHeading>Ready to go solar?</SectionHeading></Reveal>
+            <Reveal>
+              <button
+                onClick={() => setMethodologyOpen(o => !o)}
+                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border border-gray-200 bg-white shadow-sm hover:border-gray-300 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                       style={{ background: SURF }}>
+                    <FlaskConical size={17} style={{ color: TEAL }} />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold" style={{ color: DARK }}>{t('methodology')}</p>
+                    <p className="text-xs text-gray-400">{t('methodologySub')}</p>
+                  </div>
+                </div>
+                <motion.div animate={{ rotate: methodologyOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                  <ChevronDown size={18} className="text-gray-400" />
+                </motion.div>
+              </button>
+
+              <AnimatePresence>
+                {methodologyOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-2 rounded-2xl border border-gray-100 bg-white shadow-sm p-6 space-y-5 text-sm">
+
+                      {/* Data Sources */}
+                      <div>
+                        <p className="font-bold mb-2" style={{ color: DARK }}>
+                          {lang === 'en' ? '📡 Data Sources' : '📡 Sumber Data'}
+                        </p>
+                        <ul className="space-y-1.5 text-gray-600 text-xs leading-relaxed">
+                          <li>• <strong>Solar irradiance (GHI)</strong> — Global Solar Atlas, per-state averages for Malaysia</li>
+                          <li>• <strong>TNB tariff</strong> — Residential Schedule D (2025/2026): RM 0.2703/kWh (≤600 kWh), RM 0.3703/kWh (&gt;600 kWh)</li>
+                          <li>• <strong>Solar ATAP export rate</strong> — SEDA Net Energy Metering: RM 0.2703/kWh</li>
+                          <li>• <strong>CO₂ emission factor</strong> — 0.585 kgCO₂/kWh (Suruhanjaya Tenaga Malaysia)</li>
+                          <li>• <strong>System cost</strong> — Industry average RM 4,000/kWp (installed, 2025)</li>
+                        </ul>
+                      </div>
+
+                      {/* Assumptions */}
+                      <div>
+                        <p className="font-bold mb-2" style={{ color: DARK }}>
+                          {lang === 'en' ? '⚙️ Key Assumptions' : '⚙️ Andaian Utama'}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            ['Panel Efficiency', '21% (monocrystalline)'],
+                            ['Performance Ratio', '0.80 (industry standard)'],
+                            ['Area Utilisation', '70% of roof usable'],
+                            ['Panel Size', '400W per panel'],
+                            ['Degradation', '0.5% per year'],
+                            ['Projection Period', '25 years'],
+                          ].map(([k, v]) => (
+                            <div key={k} className="rounded-xl p-3" style={{ background: '#F9FAFB' }}>
+                              <p className="text-xs text-gray-400">{k}</p>
+                              <p className="font-semibold text-xs mt-0.5" style={{ color: DARK }}>{v}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Limitations */}
+                      <div>
+                        <p className="font-bold mb-2" style={{ color: DARK }}>
+                          {lang === 'en' ? '⚠️ Limitations' : '⚠️ Had Batasan'}
+                        </p>
+                        <ul className="space-y-1.5 text-gray-600 text-xs leading-relaxed">
+                          <li>• Results are estimates — actual generation varies with shading, roof pitch, and local microclimate</li>
+                          <li>• Tariff rates may change; always verify with TNB and your installer</li>
+                          <li>• System cost varies by brand, installer, and location — get at least 3 quotes</li>
+                          <li>• NEM eligibility subject to TNB grid capacity approval in your area</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Reveal>
+          </section>
+
+          {/* ── § 8  CALL TO ACTION ───────────────────────────────────────── */}
+          <section>
+            <Reveal><SectionHeading>{t('readyTitle')}</SectionHeading></Reveal>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
               {/* Download Report */}
@@ -610,8 +828,7 @@ export default function ResultPage() {
             {/* disclaimer */}
             <Reveal delay={0.2}>
               <p className="mt-6 text-xs text-center text-gray-400 leading-relaxed max-w-2xl mx-auto">
-                Estimates are based on Global Solar Atlas GHI data, TNB residential tariff (2024), SEDA Solar ATAP export rate,
-                and standard panel efficiency of 21%. Actual results may vary. Always obtain quotes from multiple SEDA-registered installers.
+                {t('disclaimer')}
               </p>
             </Reveal>
           </section>
